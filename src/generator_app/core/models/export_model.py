@@ -13,8 +13,15 @@ class ExportColumn:
 
 
 @dataclass(slots=True)
-class ExportPayload:
+class ExportFile:
+    filename: str
     columns: list[ExportColumn]
+
+
+@dataclass(slots=True)
+class ExportPayload:
+    columns: list[ExportColumn] = field(default_factory=list)
+    files: list[ExportFile] = field(default_factory=list)
     delimiter: str = " "
     line_ending: str = "\n"
     encoding: str = "utf-8"

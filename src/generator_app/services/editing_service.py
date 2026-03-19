@@ -28,6 +28,7 @@ class EditingService:
     def reverse_action(self, action: EditAction) -> EditAction:
         if isinstance(action, MovePointAction):
             return MovePointAction(
+                series_id=action.series_id,
                 point_index=action.point_index,
                 old_x=action.new_x,
                 old_y=action.new_y,

@@ -93,6 +93,7 @@ class MainWindow(QMainWindow):
         self.generate_button.clicked.connect(self._generate_current_task)
         self.save_button.clicked.connect(self._save_current_dataset)
         self.processed_button.clicked.connect(self._show_processed_view)
+        self.plot_editor.point_moved.connect(self._on_plot_point_moved)
 
     def _load_first_task(self) -> None:
         tasks = self._registry.all()
@@ -104,10 +105,25 @@ class MainWindow(QMainWindow):
 
     def _apply_task_to_ui(self, task_id: str) -> None:
         task = self._registry.get(task_id)
-        self.parameter_form.set_schema(task.parameter_schema(), task.default_parameters())
+        default_params = task.default_parameters()
+        self.parameter_form.set_schema(task.parameter_schema(), default_params)
+        self._apply_edit_profile(task.edit_profile(default_params))
         self._current_dataset = None
         self._history.clear()
         self.plot_editor.set_dataset(None)
+
+    def _apply_edit_profile(self, profile) -> None:
+        self.toolbar.move_point_button.setEnabled(profile.allow_drag_points)
+        self.toolbar.add_point_button.setEnabled(profile.allow_add_points)
+        self.toolbar.move_segment_button.setEnabled(profile.allow_drag_segments)
+        has_editing = (
+            profile.allow_drag_points
+            or profile.allow_add_points
+            or profile.allow_drag_segments
+        )
+        self.toolbar.undo_button.setEnabled(has_editing)
+        self.toolbar.redo_button.setEnabled(has_editing)
+        self.toolbar.setEnabled(has_editing)
 
     def _generate_current_task(self) -> None:
         task_id = self.task_selector.current_task_id()
@@ -121,15 +137,49 @@ class MainWindow(QMainWindow):
         self._history.clear()
         self.plot_editor.set_dataset(dataset)
 
+    def _on_plot_point_moved(self, action) -> None:
+        if self._current_dataset is None:
+            return
+
+        task_id = self.task_selector.current_task_id()
+        params = self.parameter_form.collect_values()
+        try:
+            updated_dataset = self._editing_service.apply_edit(
+                task_id,
+                self._current_dataset,
+                action,
+                params,
+            )
+        except ValueError as error:
+            QMessageBox.warning(self, "Ошибка редактирования", str(error))
+            self.plot_editor.set_dataset(self._current_dataset)
+            return
+
+        self._history.push(action)
+        self._current_dataset = updated_dataset
+        self.plot_editor.set_dataset(updated_dataset)
+
     def _save_current_dataset(self) -> None:
         if self._current_dataset is None:
-            QMessageBox.information(self, "Нет данных", "Сначала сгенерируйте или отредактируйте данные.")
+            QMessageBox.information(self, "Нет данных", "Сначала сгенерируйте данные.")
             return
 
         task_id = self.task_selector.current_task_id()
         params = self.parameter_form.collect_values()
         task = self._registry.get(task_id)
         payload = task.build_export_payload(self._current_dataset, params)
+
+        if payload.files:
+            target_dir = QFileDialog.getExistingDirectory(
+                self,
+                "Выберите папку для TXT файлов",
+                str(self._settings.default_export_dir),
+            )
+            if not target_dir:
+                return
+            self._export_service.save_txt(Path(target_dir), payload)
+            QMessageBox.information(self, "Сохранено", "TXT файлы сохранены в выбранную папку.")
+            return
 
         target_path, _ = QFileDialog.getSaveFileName(
             self,
@@ -141,6 +191,7 @@ class MainWindow(QMainWindow):
             return
 
         self._export_service.save_txt(Path(target_path), payload)
+        QMessageBox.information(self, "Сохранено", "Файл успешно сохранен.")
 
     def _show_processed_view(self) -> None:
         if self._current_dataset is None:
@@ -155,7 +206,11 @@ class MainWindow(QMainWindow):
             params,
         )
         if processed_view is None:
-            QMessageBox.information(self, "Нет обработки", "Для этого датчика обработанные данные не заданы.")
+            QMessageBox.information(
+                self,
+                "Нет обработки",
+                "Для этого датчика обработанные данные не заданы.",
+            )
             return
         dialog = ProcessedDataDialog(processed_view, self)
         dialog.exec()

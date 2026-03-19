@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 @dataclass(slots=True)
 class MovePointAction:
+    series_id: str | None
     point_index: int
     old_x: float
     old_y: float
