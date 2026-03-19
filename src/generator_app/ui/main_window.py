@@ -93,6 +93,8 @@ class MainWindow(QMainWindow):
         self.generate_button.clicked.connect(self._generate_current_task)
         self.save_button.clicked.connect(self._save_current_dataset)
         self.processed_button.clicked.connect(self._show_processed_view)
+        self.toolbar.undo_button.clicked.connect(self._undo_last_edit)
+        self.toolbar.redo_button.clicked.connect(self._redo_last_edit)
         self.plot_editor.point_moved.connect(self._on_plot_point_moved)
 
     def _load_first_task(self) -> None:
@@ -110,6 +112,7 @@ class MainWindow(QMainWindow):
         self._apply_edit_profile(task.edit_profile(default_params))
         self._current_dataset = None
         self._history.clear()
+        self._sync_history_buttons()
         self.plot_editor.set_dataset(None)
 
     def _apply_edit_profile(self, profile) -> None:
@@ -124,6 +127,11 @@ class MainWindow(QMainWindow):
         self.toolbar.undo_button.setEnabled(has_editing)
         self.toolbar.redo_button.setEnabled(has_editing)
         self.toolbar.setEnabled(has_editing)
+        self._sync_history_buttons()
+
+    def _sync_history_buttons(self) -> None:
+        self.toolbar.undo_button.setEnabled(self.toolbar.isEnabled() and self._history.can_undo())
+        self.toolbar.redo_button.setEnabled(self.toolbar.isEnabled() and self._history.can_redo())
 
     def _generate_current_task(self) -> None:
         task_id = self.task_selector.current_task_id()
@@ -135,6 +143,7 @@ class MainWindow(QMainWindow):
             return
         self._current_dataset = dataset
         self._history.clear()
+        self._sync_history_buttons()
         self.plot_editor.set_dataset(dataset)
 
     def _on_plot_point_moved(self, action) -> None:
@@ -157,6 +166,62 @@ class MainWindow(QMainWindow):
 
         self._history.push(action)
         self._current_dataset = updated_dataset
+        self._sync_history_buttons()
+        self.plot_editor.set_dataset(updated_dataset)
+
+    def _undo_last_edit(self) -> None:
+        if self._current_dataset is None:
+            return
+
+        action = self._history.pop_undo()
+        if action is None:
+            self._sync_history_buttons()
+            return
+
+        reverse_action = self._editing_service.reverse_action(action)
+        task_id = self.task_selector.current_task_id()
+        params = self.parameter_form.collect_values()
+        try:
+            updated_dataset = self._editing_service.apply_edit(
+                task_id,
+                self._current_dataset,
+                reverse_action,
+                params,
+            )
+        except ValueError as error:
+            QMessageBox.warning(self, "Ошибка отмены", str(error))
+            self._sync_history_buttons()
+            return
+
+        self._current_dataset = updated_dataset
+        self._sync_history_buttons()
+        self.plot_editor.set_dataset(updated_dataset)
+
+    def _redo_last_edit(self) -> None:
+        if self._current_dataset is None:
+            return
+
+        action = self._history.pop_redo()
+        if action is None:
+            self._sync_history_buttons()
+            return
+
+        task_id = self.task_selector.current_task_id()
+        params = self.parameter_form.collect_values()
+        try:
+            updated_dataset = self._editing_service.apply_edit(
+                task_id,
+                self._current_dataset,
+                action,
+                params,
+            )
+        except ValueError as error:
+            QMessageBox.warning(self, "Ошибка повтора", str(error))
+            self._sync_history_buttons()
+            return
+
+        self._current_dataset = updated_dataset
+        self._sync_history_buttons()
         self.plot_editor.set_dataset(updated_dataset)
 
     def _save_current_dataset(self) -> None:
