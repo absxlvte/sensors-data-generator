@@ -15,6 +15,7 @@ class MovePointAction:
 
 @dataclass(slots=True)
 class AddPointAction:
+    series_id: str | None
     insert_index: int
     x: float
     y: float
@@ -22,6 +23,7 @@ class AddPointAction:
 
 @dataclass(slots=True)
 class RemovePointAction:
+    series_id: str | None
     point_index: int
     x: float
     y: float

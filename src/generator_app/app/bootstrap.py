@@ -6,6 +6,7 @@ from generator_app.services.editing_service import EditingService
 from generator_app.services.export_service import ExportService
 from generator_app.services.generation_service import GenerationService
 from generator_app.services.processing_service import ProcessingService
+from generator_app.tasks.bubble_sensor.task import BubbleSensorTask
 from generator_app.tasks.glucose_sensor.task import GlucoseSensorTask
 from generator_app.tasks.nitrate_sensor.task import NitrateSensorTask
 from generator_app.tasks.temperature_demo.task import TemperatureDemoTask
@@ -24,6 +25,7 @@ def bootstrap_application() -> tuple[QApplication, MainWindow]:
     registry.register(SineSensorTask())
     registry.register(NitrateSensorTask())
     registry.register(GlucoseSensorTask())
+    registry.register(BubbleSensorTask())
 
     generation_service = GenerationService(registry)
     editing_service = EditingService(registry)

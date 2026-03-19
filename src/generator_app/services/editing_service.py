@@ -37,12 +37,14 @@ class EditingService:
             )
         if isinstance(action, AddPointAction):
             return RemovePointAction(
+                series_id=action.series_id,
                 point_index=action.insert_index,
                 x=action.x,
                 y=action.y,
             )
         if isinstance(action, RemovePointAction):
             return AddPointAction(
+                series_id=action.series_id,
                 insert_index=action.point_index,
                 x=action.x,
                 y=action.y,

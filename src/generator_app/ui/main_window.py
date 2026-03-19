@@ -166,6 +166,8 @@ class MainWindow(QMainWindow):
 
         self._history.push(action)
         self._current_dataset = updated_dataset
+        if "control_points" in updated_dataset.meta:
+            self.parameter_form.set_value("control_points", updated_dataset.meta["control_points"])
         self._sync_history_buttons()
         self.plot_editor.set_dataset(updated_dataset)
 
@@ -194,6 +196,8 @@ class MainWindow(QMainWindow):
             return
 
         self._current_dataset = updated_dataset
+        if "control_points" in updated_dataset.meta:
+            self.parameter_form.set_value("control_points", updated_dataset.meta["control_points"])
         self._sync_history_buttons()
         self.plot_editor.set_dataset(updated_dataset)
 
@@ -221,6 +225,8 @@ class MainWindow(QMainWindow):
             return
 
         self._current_dataset = updated_dataset
+        if "control_points" in updated_dataset.meta:
+            self.parameter_form.set_value("control_points", updated_dataset.meta["control_points"])
         self._sync_history_buttons()
         self.plot_editor.set_dataset(updated_dataset)
 

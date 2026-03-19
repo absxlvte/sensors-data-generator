@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 
-ParameterKind = Literal["int", "float", "bool", "choice"]
+ParameterKind = Literal["int", "float", "bool", "choice", "point_list"]
 
 
 @dataclass(slots=True)
@@ -18,3 +18,7 @@ class ParameterSpec:
     step: int | float | None = None
     choices: list[tuple[str, Any]] = field(default_factory=list)
     tooltip: str = ""
+    x_label: str = "X"
+    y_label: str = "Y"
+    min_points: int = 0
+    sort_points: bool = True

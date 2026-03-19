@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
 )
 
 from generator_app.core.models.parameter_spec import ParameterSpec
+from generator_app.ui.widgets.point_list_editor import PointListEditorWidget
 
 
 class ParameterFormWidget(QGroupBox):
@@ -42,7 +43,26 @@ class ParameterFormWidget(QGroupBox):
                 values[key] = widget.isChecked()
             elif isinstance(widget, QComboBox):
                 values[key] = widget.currentData()
+            elif isinstance(widget, PointListEditorWidget):
+                values[key] = widget.value()
         return values
+
+    def set_value(self, key: str, value: Any) -> None:
+        widget = self._editors.get(key)
+        if widget is None:
+            return
+        if isinstance(widget, QSpinBox):
+            widget.setValue(int(value))
+        elif isinstance(widget, QDoubleSpinBox):
+            widget.setValue(float(value))
+        elif isinstance(widget, QCheckBox):
+            widget.setChecked(bool(value))
+        elif isinstance(widget, QComboBox):
+            index = widget.findData(value)
+            if index >= 0:
+                widget.setCurrentIndex(index)
+        elif isinstance(widget, PointListEditorWidget):
+            widget.set_value(value)
 
     def _create_editor(self, spec: ParameterSpec, value: Any) -> QWidget:
         if spec.kind == "int":
@@ -78,6 +98,9 @@ class ParameterFormWidget(QGroupBox):
                 )
                 editor.setCurrentIndex(selected_index)
             return editor
+
+        if spec.kind == "point_list":
+            return PointListEditorWidget(spec, value, self)
 
         msg = f"Unsupported parameter type: {spec.kind}"
         raise ValueError(msg)
