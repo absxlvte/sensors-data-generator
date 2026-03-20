@@ -35,6 +35,23 @@ def _z_to_voltage_bipolar(z_value: np.ndarray | float, adc_bits: int, v_ref: flo
     return ((-1) ** sign_bit * other * v_ref / 2.0) / (2 ** (adc_bits - 1))
 
 
+def _build_linear_mapping(
+    source_min: float,
+    source_max: float,
+    target_min: float,
+    target_max: float,
+) -> tuple[float, float]:
+    if np.isclose(source_max, source_min):
+        return 0.0, (target_min + target_max) / 2.0
+    scale = (target_max - target_min) / (source_max - source_min)
+    offset = target_min - source_min * scale
+    return float(scale), float(offset)
+
+
+def _apply_linear_mapping(values: np.ndarray, scale: float, offset: float) -> np.ndarray:
+    return np.asarray(values, dtype=float) * scale + offset
+
+
 def _build_random_state(point_count: int, outlier_count: int) -> dict[str, np.ndarray]:
     safe_outlier_count = max(0, min(outlier_count, point_count))
     if safe_outlier_count == 0:
@@ -87,8 +104,17 @@ def _build_ph_arrays(
     time_axis = np.linspace(0.0, duration, point_count, dtype=float)
 
     baseline_ph = build_curve_from_control_points(control_time, control_ph, time_axis)
-    baseline_voltage = _ph_to_voltage(baseline_ph, temperature_k, gas_const, faraday_const)
-    baseline_adc = _voltage_to_z_bipolar(baseline_voltage, adc_bits, v_ref)
+
+    acidic_guide = float(_voltage_to_z_bipolar(_ph_to_voltage(0.1, temperature_k, gas_const, faraday_const), adc_bits, v_ref))
+    neutral_guide = float(_voltage_to_z_bipolar(_ph_to_voltage(7.0, temperature_k, gas_const, faraday_const), adc_bits, v_ref))
+    alkaline_guide = float(_voltage_to_z_bipolar(_ph_to_voltage(14.0, temperature_k, gas_const, faraday_const), adc_bits, v_ref))
+    adc_lower = min(acidic_guide, alkaline_guide)
+    adc_upper = max(acidic_guide, alkaline_guide)
+
+    raw_ph_min = float(np.min(baseline_ph))
+    raw_ph_max = float(np.max(baseline_ph))
+    adc_scale, adc_offset = _build_linear_mapping(raw_ph_min, raw_ph_max, adc_lower, adc_upper)
+    baseline_adc = _apply_linear_mapping(baseline_ph, adc_scale, adc_offset)
 
     noisy_adc = _apply_outliers(
         baseline_adc,
@@ -99,18 +125,12 @@ def _build_ph_arrays(
     noisy_adc = _apply_noise(noisy_adc, random_state["noise_profile"], noise_level)
     noisy_adc = np.clip(noisy_adc, 0.0, float((2**adc_bits) - 1))
     adc_signal = np.round(noisy_adc).astype(int)
+    if np.isclose(adc_scale, 0.0):
+        noisy_ph = np.full_like(baseline_ph, raw_ph_min)
+    else:
+        noisy_ph = (adc_signal - adc_offset) / adc_scale
 
-    noisy_voltage = _z_to_voltage_bipolar(adc_signal, adc_bits, v_ref)
-    noisy_ph = _voltage_to_ph(noisy_voltage, temperature_k, gas_const, faraday_const)
-
-    control_voltage = _ph_to_voltage(control_ph, temperature_k, gas_const, faraday_const)
-    control_display = _voltage_to_z_bipolar(control_voltage, adc_bits, v_ref)
-
-    acidic_guide = float(_voltage_to_z_bipolar(_ph_to_voltage(0.1, temperature_k, gas_const, faraday_const), adc_bits, v_ref))
-    neutral_guide = float(_voltage_to_z_bipolar(_ph_to_voltage(7.0, temperature_k, gas_const, faraday_const), adc_bits, v_ref))
-    alkaline_guide = float(_voltage_to_z_bipolar(_ph_to_voltage(14.0, temperature_k, gas_const, faraday_const), adc_bits, v_ref))
-    adc_lower = min(acidic_guide, alkaline_guide)
-    adc_upper = max(acidic_guide, alkaline_guide)
+    control_display = _apply_linear_mapping(control_ph, adc_scale, adc_offset)
     control_display = np.clip(control_display, adc_lower, adc_upper)
     reference_signal = build_curve_from_control_points(control_time, control_display, time_axis)
 
@@ -125,6 +145,14 @@ def _build_ph_arrays(
         "control_display": control_display,
         "control_points": control_points,
         "z_bounds": (adc_lower, adc_upper),
+        "adc_mapping": {
+            "scale": adc_scale,
+            "offset": adc_offset,
+            "raw_min": raw_ph_min,
+            "raw_max": raw_ph_max,
+            "display_min": adc_lower,
+            "display_max": adc_upper,
+        },
         "ph_guides": {
             "acidic": acidic_guide,
             "neutral": neutral_guide,
@@ -206,6 +234,7 @@ def generate_ph_dataset(
             "control_display_points": list(
                 zip(arrays["control_time"].tolist(), arrays["control_display"].tolist(), strict=True)
             ),
+            "adc_mapping": arrays["adc_mapping"],
             "adc_bits": adc_bits,
             "v_ref": v_ref,
             "temperature_k": temperature_k,

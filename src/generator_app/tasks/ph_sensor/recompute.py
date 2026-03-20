@@ -2,22 +2,17 @@ from __future__ import annotations
 
 from generator_app.core.models.dataset import GeneratedDataset
 from generator_app.core.models.edit_actions import AddPointAction, EditAction, MovePointAction, RemovePointAction
-from generator_app.tasks.ph_sensor.generator import (
-    _voltage_to_ph,
-    _z_to_voltage_bipolar,
-    generate_ph_dataset,
-)
+from generator_app.tasks.ph_sensor.generator import generate_ph_dataset
 
 
 def _display_to_raw_ph(dataset: GeneratedDataset, display_y: float) -> float:
-    adc_bits = int(dataset.meta.get("adc_bits", 12))
-    v_ref = float(dataset.meta.get("v_ref", 5.0))
-    temperature_k = float(dataset.meta.get("temperature_k", 298.0))
-    faraday_const = float(dataset.meta.get("faraday_const", 96485.0))
-    gas_const = float(dataset.meta.get("gas_const", 8.314))
-
-    restored_voltage = _z_to_voltage_bipolar(round(display_y), adc_bits, v_ref)
-    restored_ph = float(_voltage_to_ph(restored_voltage, temperature_k, gas_const, faraday_const))
+    adc_mapping = dataset.meta.get("adc_mapping", {})
+    scale = float(adc_mapping.get("scale", 0.0))
+    offset = float(adc_mapping.get("offset", 0.0))
+    if scale == 0.0:
+        restored_ph = float(adc_mapping.get("raw_min", 7.0))
+    else:
+        restored_ph = (float(display_y) - offset) / scale
     return float(min(14.0, max(0.1, restored_ph)))
 
 

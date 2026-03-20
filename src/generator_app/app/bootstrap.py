@@ -9,8 +9,10 @@ from generator_app.services.processing_service import ProcessingService
 from generator_app.tasks.blood_sensor.task import BloodSensorTask
 from generator_app.tasks.bubble_sensor.task import BubbleSensorTask
 from generator_app.tasks.glucose_sensor.task import GlucoseSensorTask
+from generator_app.tasks.geiger_sensor.task import GeigerSensorTask
 from generator_app.tasks.heart_rate_sensor.task import HeartRateSensorTask
 from generator_app.tasks.hydraulic_sensor.task import HydraulicSensorTask
+from generator_app.tasks.liquid_level_sensor.task import LiquidLevelSensorTask
 from generator_app.tasks.nitrate_sensor.task import NitrateSensorTask
 from generator_app.tasks.ph_sensor.task import PHSensorTask
 from generator_app.tasks.spo2_sensor.task import SpO2SensorTask
@@ -29,6 +31,8 @@ def bootstrap_application() -> tuple[QApplication, MainWindow]:
     registry.register(TemperatureSensorTask())
     registry.register(HydraulicSensorTask())
     registry.register(BloodSensorTask())
+    registry.register(LiquidLevelSensorTask())
+    registry.register(GeigerSensorTask())
     registry.register(SpO2SensorTask())
     registry.register(HeartRateSensorTask())
     registry.register(PHSensorTask())

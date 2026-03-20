@@ -3,7 +3,6 @@ from __future__ import annotations
 import numpy as np
 
 from generator_app.core.models.dataset import GeneratedDataset, ProcessedCurve, ProcessedView
-from generator_app.tasks.ph_sensor.generator import _voltage_to_ph, _z_to_voltage_bipolar
 
 
 def _median_filter(signal: np.ndarray, window_size: int) -> np.ndarray:
@@ -26,25 +25,24 @@ def _moving_average(signal: np.ndarray, window_size: int) -> np.ndarray:
 
 
 def _restore_ph(dataset: GeneratedDataset) -> np.ndarray:
+    adc_mapping = dataset.meta.get("adc_mapping", {})
     adc_signal = np.asarray(dataset.meta.get("adc_signal", []), dtype=float)
-    voltage = _z_to_voltage_bipolar(
-        adc_signal,
-        int(dataset.meta.get("adc_bits", 12)),
-        float(dataset.meta.get("v_ref", 5.0)),
-    )
-    return _voltage_to_ph(
-        voltage,
-        float(dataset.meta.get("temperature_k", 298.0)),
-        float(dataset.meta.get("gas_const", 8.314)),
-        float(dataset.meta.get("faraday_const", 96485.0)),
-    )
+    scale = float(adc_mapping.get("scale", 0.0))
+    offset = float(adc_mapping.get("offset", 0.0))
+    if adc_signal.size == 0:
+        return adc_signal
+    if scale == 0.0:
+        return np.full_like(adc_signal, float(adc_mapping.get("raw_min", 7.0)))
+    restored = (adc_signal - offset) / scale
+    return np.clip(restored, 0.1, 14.0)
 
 
 def build_processed_view(dataset: GeneratedDataset) -> ProcessedView:
     time_axis = np.asarray(dataset.meta.get("time_axis", []), dtype=float)
     baseline_ph = np.asarray(dataset.meta.get("baseline_ph", []), dtype=float)
     restored_ph = _restore_ph(dataset)
-    filtered_ph = _moving_average(_median_filter(restored_ph, 7), 9)
+    filtered_ph = _moving_average(_median_filter(restored_ph, 5), 7)
+    filtered_ph = np.clip(filtered_ph, 0.1, 14.0)
 
     return ProcessedView(
         title="Обработка pH",
