@@ -1,2 +1,0 @@
-"""Sine test sensor task."""
-

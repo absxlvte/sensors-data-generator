@@ -12,8 +12,8 @@ class TaskSelectorWidget(QWidget):
     def __init__(self, tasks: list[SensorTask], parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._combo = QComboBox(self)
-        for task in tasks:
-            self._combo.addItem(task.display_name, task.id)
+        for index, task in enumerate(tasks, start=1):
+            self._combo.addItem(f"{index}. {task.display_name}", task.id)
 
         layout = QVBoxLayout(self)
         layout.addWidget(self._combo)

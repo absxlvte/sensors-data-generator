@@ -37,7 +37,7 @@ def build_parameter_schema() -> list[ParameterSpec]:
             key="outlier_count",
             label="Число выбросов",
             kind="int",
-            default=5,
+            default=0,
             min_value=0,
             max_value=200,
             step=1,
@@ -101,7 +101,7 @@ def build_default_parameters() -> dict[str, int | float | list[tuple[float, floa
     return {
         "point_count": 1000,
         "noise_level": 0.05,
-        "outlier_count": 5,
+        "outlier_count": 0,
         "outlier_strength": 1.5,
         "adc_bits": 16,
         "time_start": 0.0,

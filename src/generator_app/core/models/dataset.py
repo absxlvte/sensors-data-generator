@@ -33,6 +33,8 @@ class ProcessedCurve:
     name: str
     x: np.ndarray
     y: np.ndarray
+    color: str | None = None
+    line_style: str = "solid"
 
 
 @dataclass(slots=True)

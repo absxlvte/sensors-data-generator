@@ -7,23 +7,17 @@ from generator_app.core.models.export_model import ExportColumn, ExportPayload
 
 
 def build_export_payload(dataset: GeneratedDataset) -> ExportPayload:
-    signal_series = next(series for series in dataset.series if series.id == "sine")
-
     return ExportPayload(
         columns=[
             ExportColumn(
                 name="time",
-                values=np.asarray(signal_series.x),
+                values=np.asarray(dataset.meta.get("time_axis", []), dtype=float),
                 formatter=".6f",
             ),
             ExportColumn(
-                name="signal",
-                values=np.asarray(signal_series.y),
-                formatter=".6f",
+                name="count",
+                values=np.asarray(dataset.meta.get("binary_signal", []), dtype=float),
+                formatter=".0f",
             ),
-        ],
-        delimiter=" ",
-        line_ending="\n",
-        encoding="utf-8",
+        ]
     )
-

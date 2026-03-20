@@ -7,7 +7,11 @@ from generator_app.services.export_service import ExportService
 from generator_app.services.generation_service import GenerationService
 from generator_app.services.processing_service import ProcessingService
 from generator_app.tasks.blood_sensor.task import BloodSensorTask
+from generator_app.tasks.blood_pressure_sensor.task import BloodPressureSensorTask
 from generator_app.tasks.bubble_sensor.task import BubbleSensorTask
+from generator_app.tasks.capnograph_sensor.task import CapnographSensorTask
+from generator_app.tasks.conductivity_sensor.task import ConductivitySensorTask
+from generator_app.tasks.flow_sensor.task import FlowSensorTask
 from generator_app.tasks.glucose_sensor.task import GlucoseSensorTask
 from generator_app.tasks.geiger_sensor.task import GeigerSensorTask
 from generator_app.tasks.heart_rate_sensor.task import HeartRateSensorTask
@@ -17,7 +21,6 @@ from generator_app.tasks.nitrate_sensor.task import NitrateSensorTask
 from generator_app.tasks.ph_sensor.task import PHSensorTask
 from generator_app.tasks.spo2_sensor.task import SpO2SensorTask
 from generator_app.tasks.temperature_sensor.task import TemperatureSensorTask
-from generator_app.tasks.test_Sin.task import SineSensorTask
 from generator_app.ui.main_window import MainWindow
 
 
@@ -31,12 +34,15 @@ def bootstrap_application() -> tuple[QApplication, MainWindow]:
     registry.register(TemperatureSensorTask())
     registry.register(HydraulicSensorTask())
     registry.register(BloodSensorTask())
+    registry.register(BloodPressureSensorTask())
+    registry.register(CapnographSensorTask())
+    registry.register(ConductivitySensorTask())
     registry.register(LiquidLevelSensorTask())
+    registry.register(FlowSensorTask())
     registry.register(GeigerSensorTask())
     registry.register(SpO2SensorTask())
     registry.register(HeartRateSensorTask())
     registry.register(PHSensorTask())
-    registry.register(SineSensorTask())
     registry.register(NitrateSensorTask())
     registry.register(GlucoseSensorTask())
     registry.register(BubbleSensorTask())

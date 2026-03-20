@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pyqtgraph as pg
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
+    QApplication,
     QFileDialog,
     QHBoxLayout,
     QMainWindow,
@@ -49,10 +51,12 @@ class MainWindow(QMainWindow):
 
         self._history = UndoRedoManager()
         self._current_dataset: GeneratedDataset | None = None
+        self._theme = "dark"
 
         self.setWindowTitle(settings.app_name)
         self.resize(1440, 900)
         self._build_ui()
+        self._apply_theme(self._theme)
         self._load_first_task()
 
     def _build_ui(self) -> None:
@@ -68,9 +72,11 @@ class MainWindow(QMainWindow):
         self.task_selector = TaskSelectorWidget(self._registry.all(), left_panel)
         self.parameter_form = ParameterFormWidget(left_panel)
         self.toolbar = ToolbarWidget(left_panel)
-        self.generate_button = QPushButton("Сгенерировать случайно", left_panel)
+        self.generate_button = QPushButton("Сгенерировать", left_panel)
         self.save_button = QPushButton("Сохранить TXT", left_panel)
         self.processed_button = QPushButton("Показать обработанные данные", left_panel)
+        self.theme_button = QPushButton("", left_panel)
+        self.exit_button = QPushButton("Выход", left_panel)
 
         left_layout.addWidget(self.task_selector)
         left_layout.addWidget(self.parameter_form)
@@ -78,6 +84,8 @@ class MainWindow(QMainWindow):
         left_layout.addWidget(self.generate_button)
         left_layout.addWidget(self.save_button)
         left_layout.addWidget(self.processed_button)
+        left_layout.addWidget(self.theme_button)
+        left_layout.addWidget(self.exit_button)
         left_layout.addStretch(1)
 
         right_panel = QWidget(splitter)
@@ -93,9 +101,101 @@ class MainWindow(QMainWindow):
         self.generate_button.clicked.connect(self._generate_current_task)
         self.save_button.clicked.connect(self._save_current_dataset)
         self.processed_button.clicked.connect(self._show_processed_view)
+        self.theme_button.clicked.connect(self._toggle_theme)
+        self.exit_button.clicked.connect(self.close)
         self.toolbar.undo_button.clicked.connect(self._undo_last_edit)
         self.toolbar.redo_button.clicked.connect(self._redo_last_edit)
         self.plot_editor.point_moved.connect(self._on_plot_point_moved)
+
+    def _toggle_theme(self) -> None:
+        self._apply_theme("light" if self._theme == "dark" else "dark")
+
+    def _apply_theme(self, theme: str) -> None:
+        self._theme = theme
+        app = QApplication.instance()
+        if app is None:
+            return
+
+        if theme == "light":
+            pg.setConfigOptions(background="#ECEFF1", foreground="#1F2933")
+            app.setStyleSheet(self._light_stylesheet())
+            self.theme_button.setText("Темная тема")
+        else:
+            pg.setConfigOptions(background="#111318", foreground="#E5E7EB")
+            app.setStyleSheet(self._dark_stylesheet())
+            self.theme_button.setText("Светлая тема")
+
+        self.plot_editor.set_theme(theme)
+        if self._current_dataset is not None:
+            self.plot_editor.set_dataset(self._current_dataset)
+
+    @staticmethod
+    def _light_stylesheet() -> str:
+        return """
+        QWidget {
+            background-color: #E6EAEE;
+            color: #1F2933;
+        }
+        QMainWindow, QDialog {
+            background-color: #E6EAEE;
+        }
+        QPushButton, QComboBox, QSpinBox, QDoubleSpinBox, QLineEdit, QCheckBox, QTableWidget {
+            background-color: #F7F9FB;
+            color: #1F2933;
+            border: 1px solid #B0BEC5;
+            border-radius: 6px;
+            padding: 6px;
+        }
+        QPushButton:hover {
+            background-color: #FFFFFF;
+        }
+        QGroupBox {
+            border: 1px solid #B0BEC5;
+            border-radius: 6px;
+            margin-top: 8px;
+            padding-top: 8px;
+        }
+        QHeaderView::section {
+            background-color: #CFD8DC;
+            color: #1F2933;
+            padding: 4px;
+            border: 1px solid #B0BEC5;
+        }
+        """
+
+    @staticmethod
+    def _dark_stylesheet() -> str:
+        return """
+        QWidget {
+            background-color: #1A1D24;
+            color: #E5E7EB;
+        }
+        QMainWindow, QDialog {
+            background-color: #1A1D24;
+        }
+        QPushButton, QComboBox, QSpinBox, QDoubleSpinBox, QLineEdit, QCheckBox, QTableWidget {
+            background-color: #252A33;
+            color: #E5E7EB;
+            border: 1px solid #3A414D;
+            border-radius: 6px;
+            padding: 6px;
+        }
+        QPushButton:hover {
+            background-color: #2F3642;
+        }
+        QGroupBox {
+            border: 1px solid #3A414D;
+            border-radius: 6px;
+            margin-top: 8px;
+            padding-top: 8px;
+        }
+        QHeaderView::section {
+            background-color: #252A33;
+            color: #E5E7EB;
+            padding: 4px;
+            border: 1px solid #3A414D;
+        }
+        """
 
     def _load_first_task(self) -> None:
         tasks = self._registry.all()
@@ -283,5 +383,5 @@ class MainWindow(QMainWindow):
                 "Для этого датчика обработанные данные не заданы.",
             )
             return
-        dialog = ProcessedDataDialog(processed_view, self)
+        dialog = ProcessedDataDialog(processed_view, self, theme=self._theme)
         dialog.exec()

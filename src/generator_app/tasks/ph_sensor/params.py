@@ -108,7 +108,7 @@ def build_parameter_schema() -> list[ParameterSpec]:
             key="outlier_count",
             label="Число выбросов",
             kind="int",
-            default=5,
+            default=0,
             min_value=0,
             max_value=200,
             step=1,
@@ -149,7 +149,7 @@ def build_default_parameters() -> dict[str, int | float | list[tuple[float, floa
         "faraday_const": 96485.0,
         "gas_const": 8.314,
         "noise_level": 0.1,
-        "outlier_count": 5,
+        "outlier_count": 0,
         "outlier_strength": 0.3,
         "control_points": list(DEFAULT_CONTROL_POINTS),
     }

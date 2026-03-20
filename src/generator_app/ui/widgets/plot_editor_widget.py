@@ -111,7 +111,7 @@ class _DraggableSeriesItem(pg.GraphItem):
 
         if event.isStart():
             points = self.scatter.pointsAt(event.buttonDownPos())
-            if not points:
+            if len(points) == 0:
                 event.ignore()
                 return
             point = points[0]
@@ -161,7 +161,7 @@ class _DraggableSeriesItem(pg.GraphItem):
 
     def mouseClickEvent(self, event) -> None:  # noqa: N802 - Qt naming
         clicked_points = self.scatter.pointsAt(event.pos())
-        clicked_index = int(clicked_points[0].data()) if clicked_points else None
+        clicked_index = int(clicked_points[0].data()) if len(clicked_points) > 0 else None
 
         if event.button() == Qt.MouseButton.LeftButton:
             self._select_index(clicked_index)
@@ -215,12 +215,19 @@ class PlotEditorWidget(QWidget):
         "temperature_output": "#D81B60",
         "temperature_reference": "#FB8C00",
         "temperature_nodes": "#3949AB",
+        "capnograph_output": "#00695C",
+        "capnograph_reference": "#FB8C00",
+        "capnograph_nodes": "#C62828",
+        "conductivity_output": "#283593",
+        "conductivity_reference": "#00897B",
+        "conductivity_nodes": "#EF6C00",
         "hydraulic_output": "#00897B",
         "hydraulic_reference": "#F4511E",
         "hydraulic_nodes": "#5E35B1",
         "blood_output": "#C62828",
         "blood_reference": "#1565C0",
         "blood_nodes": "#6A1B9A",
+        "blood_pressure_output": "#8E24AA",
         "ph_output": "#6D4C41",
         "ph_reference": "#00897B",
         "ph_nodes": "#5E35B1",
@@ -239,6 +246,9 @@ class PlotEditorWidget(QWidget):
         "geiger_binary": "#3949AB",
         "geiger_probability": "#E53935",
         "geiger_nodes": "#00897B",
+        "flow_binary": "#5E35B1",
+        "flow_probability": "#F4511E",
+        "flow_nodes": "#00897B",
         "glucose_family_1": "#7B1FA2",
         "glucose_family_2": "#8E24AA",
         "glucose_family_3": "#AB47BC",
@@ -264,12 +274,33 @@ class PlotEditorWidget(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._plot = pg.PlotWidget(self)
+        self._theme = "dark"
         self._plot.showGrid(x=True, y=True, alpha=0.25)
         self._plot.addLegend()
         self._selected_points: dict[str, int | None] = {}
+        self.set_theme(self._theme)
 
         layout = QVBoxLayout(self)
         layout.addWidget(self._plot)
+
+    def set_theme(self, theme: str) -> None:
+        self._theme = theme
+        if theme == "light":
+            background = "#ECEFF1"
+            foreground = "#1F2933"
+            grid_alpha = 0.18
+        else:
+            background = "#111318"
+            foreground = "#E5E7EB"
+            grid_alpha = 0.25
+
+        self._plot.setBackground(background)
+        self._plot.showGrid(x=True, y=True, alpha=grid_alpha)
+        plot_item = self._plot.getPlotItem()
+        for axis_name in ("left", "bottom"):
+            axis = plot_item.getAxis(axis_name)
+            axis.setTextPen(pg.mkPen(foreground))
+            axis.setPen(pg.mkPen(foreground))
 
     def _handle_selection_changed(self, series_id: str, point_index: int | None) -> None:
         self._selected_points[series_id] = point_index
@@ -278,6 +309,7 @@ class PlotEditorWidget(QWidget):
         self._plot.clear()
         if dataset is None:
             self._selected_points.clear()
+            self._plot.getViewBox().autoRange()
             return
 
         drag_config = dataset.meta.get("drag_config", {})
@@ -314,3 +346,5 @@ class PlotEditorWidget(QWidget):
                 symbolSize=6 if len(series.x) <= 120 else None,
                 symbolBrush=color if len(series.x) <= 200 else None,
             )
+
+        self._plot.getViewBox().autoRange()
