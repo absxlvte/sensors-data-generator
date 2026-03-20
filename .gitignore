@@ -14,14 +14,15 @@ venv/
 env/
 ENV/
 
-# Packaging and build artifacts
-build/
-dist/
+# Packaging, releases, and build artifacts
+/build/
+/dist/
+/release/
 downloads/
 eggs/
 .eggs/
-*.egg-info/
 *.egg
+*.egg-info/
 pip-wheel-metadata/
 
 # Installer logs
