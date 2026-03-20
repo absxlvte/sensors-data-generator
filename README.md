@@ -1,4 +1,6 @@
-# Generator New Generation
+## БМС МИЭТ
+# Генератор сырых данных для дисциплины ОПИБС
+
 
 Приложение для Windows с GUI на `PyQt6` для генерации "сырых" данных датчиков,
 их интерактивного редактирования на графике и сохранения в `txt`.
@@ -10,6 +12,7 @@
 - pyqtgraph
 - numpy
 - pandas
+- neurokit2
 
 ## Архитектура
 
@@ -25,3 +28,4 @@
 python -m pip install -e .
 python -m generator_app
 ```
+# Текущая актуальная версия в releases
