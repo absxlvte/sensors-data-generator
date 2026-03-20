@@ -44,4 +44,4 @@ def apply_edit_to_dataset(
         updated_params["control_points"] = control_points
         return generate_bubble_dataset(updated_params)
 
-        return dataset
+    return dataset
