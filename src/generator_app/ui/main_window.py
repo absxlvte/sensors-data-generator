@@ -6,6 +6,7 @@ import pyqtgraph as pg
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QFileDialog,
     QHBoxLayout,
     QMainWindow,
@@ -74,6 +75,11 @@ class MainWindow(QMainWindow):
         self.toolbar = ToolbarWidget(left_panel)
         self.generate_button = QPushButton("Сгенерировать", left_panel)
         self.save_button = QPushButton("Сохранить TXT", left_panel)
+        self.include_time_checkbox = QCheckBox("Добавить время в выходной файл", left_panel)
+        self.include_time_checkbox.setChecked(True)
+        self.include_time_checkbox.setToolTip(
+            "Добавлять столбец времени или номера измерения, в зависимости от задания."
+        )
         self.processed_button = QPushButton("Показать обработанные данные", left_panel)
         self.theme_button = QPushButton("", left_panel)
         self.exit_button = QPushButton("Выход", left_panel)
@@ -83,6 +89,7 @@ class MainWindow(QMainWindow):
         left_layout.addWidget(self.toolbar)
         left_layout.addWidget(self.generate_button)
         left_layout.addWidget(self.save_button)
+        left_layout.addWidget(self.include_time_checkbox)
         left_layout.addWidget(self.processed_button)
         left_layout.addWidget(self.theme_button)
         left_layout.addWidget(self.exit_button)
@@ -348,7 +355,9 @@ class MainWindow(QMainWindow):
             )
             if not target_dir:
                 return
-            self._export_service.save_txt(Path(target_dir), payload)
+            self._export_service.save_txt(
+                Path(target_dir), payload, include_time=self.include_time_checkbox.isChecked()
+            )
             QMessageBox.information(self, "Сохранено", "TXT файлы сохранены в выбранную папку.")
             return
 
@@ -361,7 +370,9 @@ class MainWindow(QMainWindow):
         if not target_path:
             return
 
-        self._export_service.save_txt(Path(target_path), payload)
+        self._export_service.save_txt(
+            Path(target_path), payload, include_time=self.include_time_checkbox.isChecked()
+        )
         QMessageBox.information(self, "Сохранено", "Файл успешно сохранен.")
 
     def _show_processed_view(self) -> None:

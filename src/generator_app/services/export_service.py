@@ -6,7 +6,9 @@ from generator_app.core.models.export_model import ExportPayload
 
 
 class ExportService:
-    def save_txt(self, path: Path, payload: ExportPayload) -> None:
+    def save_txt(
+        self, path: Path, payload: ExportPayload, *, include_time: bool = True
+    ) -> None:
         if payload.files:
             path.mkdir(parents=True, exist_ok=True)
             for export_file in payload.files:
@@ -17,21 +19,25 @@ class ExportService:
                     encoding=payload.encoding,
                     decimal_separator=payload.decimal_separator,
                     metadata=dict(payload.metadata),
-                ))
+                ), include_time=include_time)
             return
 
-        self._write_single_file(path, payload)
+        self._write_single_file(path, payload, include_time=include_time)
 
-    def _write_single_file(self, path: Path, payload: ExportPayload) -> None:
+    def _write_single_file(
+        self, path: Path, payload: ExportPayload, *, include_time: bool = True
+    ) -> None:
+        # Exporters use "time" for both timestamps and measurement indices.
+        columns = [c for c in payload.columns if include_time or c.name != "time"]
         rows: list[str] = []
-        column_count = len(payload.columns)
+        column_count = len(columns)
         if column_count == 0:
             raise ValueError("Export payload has no columns.")
 
-        row_count = len(payload.columns[0].values)
+        row_count = len(columns[0].values)
         for row_index in range(row_count):
             parts: list[str] = []
-            for column in payload.columns:
+            for column in columns:
                 raw_value = column.values[row_index]
                 formatted = format(raw_value, column.formatter)
                 if payload.decimal_separator != ".":
