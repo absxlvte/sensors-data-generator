@@ -5,6 +5,7 @@ import numpy as np
 from generator_app.core.models.dataset import DataSeries, GeneratedDataset
 from generator_app.core.models.edit_model import EditModel
 from generator_app.plotting.pchip_adapter import build_curve_from_control_points
+from generator_app.tasks.glucose_sensor.integration import trapezoidal_integral
 
 
 GLUCOSE_FREQUENCIES = np.linspace(10, 100, 10, dtype=float)
@@ -23,7 +24,10 @@ def _build_hyperbola(height: float, noise_scale: float) -> np.ndarray:
 
 def _build_reference_family(noise_scale: float) -> tuple[list[np.ndarray], np.ndarray, float, float]:
     family_curves = [_build_hyperbola(float(height), noise_scale) for height in GLUCOSE_HEIGHTS]
-    areas = np.array([np.trapz(curve, GLUCOSE_FREQUENCIES) for curve in family_curves], dtype=float)
+    areas = np.array(
+        [trapezoidal_integral(curve, GLUCOSE_FREQUENCIES) for curve in family_curves],
+        dtype=float,
+    )
     k = (300.0 - 20.0) / (areas[0] - areas[-1])
     b = 300.0 - k * areas[0]
     return family_curves, areas, float(k), float(b)
@@ -33,7 +37,7 @@ def _build_quantization_concentration_family_desc(noise_scale: float, k: float, 
     concentrations: list[float] = []
     for height in GLUCOSE_QUANTIZATION_HEIGHTS_DESC:
         curve = _build_hyperbola(float(height), noise_scale)
-        area = np.trapz(curve, GLUCOSE_FREQUENCIES)
+        area = trapezoidal_integral(curve, GLUCOSE_FREQUENCIES)
         concentrations.append(k * area + b)
     return np.asarray(concentrations, dtype=float)
 
@@ -69,7 +73,7 @@ def _map_quantized_signal_to_heights(
 def _create_glucose_data(
     points: int = 1000,
     noise_scale: float = 0.7,
-) -> tuple[list[np.ndarray], np.ndarray, np.ndarray, np.ndarray, float, float]:
+) -> tuple[list[np.ndarray], np.ndarray, np.ndarray, np.ndarray, np.ndarray, float, float]:
     family_curves, _, k, b = _build_reference_family(noise_scale)
     concentration_family_desc = _build_quantization_concentration_family_desc(noise_scale, k, b)
 
@@ -88,7 +92,10 @@ def _create_glucose_data(
         raw_matrix[row_index, :] = _build_hyperbola(float(height), noise_scale)
 
     concentration = np.array(
-        [k * np.trapz(raw_matrix[index, :], GLUCOSE_FREQUENCIES) + b for index in range(raw_matrix.shape[0])],
+        [
+            k * trapezoidal_integral(raw_matrix[index, :], GLUCOSE_FREQUENCIES) + b
+            for index in range(raw_matrix.shape[0])
+        ],
         dtype=float,
     )
     return family_curves, raw_matrix, concentration, reference_concentration, time, k, b

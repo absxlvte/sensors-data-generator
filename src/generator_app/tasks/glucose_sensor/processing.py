@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 from generator_app.core.models.dataset import GeneratedDataset, ProcessedCurve, ProcessedView
+from generator_app.tasks.glucose_sensor.integration import trapezoidal_integral
 
 
 def build_processed_view(dataset: GeneratedDataset) -> ProcessedView:
@@ -14,7 +15,7 @@ def build_processed_view(dataset: GeneratedDataset) -> ProcessedView:
     reference_concentration = np.asarray(dataset.meta["reference_concentration"], dtype=float)
 
     concentration = np.array(
-        [k * np.trapz(row, frequencies) + b for row in raw_matrix],
+        [k * trapezoidal_integral(row, frequencies) + b for row in raw_matrix],
         dtype=float,
     )
     return ProcessedView(
