@@ -214,6 +214,7 @@ class MainWindow(QMainWindow):
 
     def _apply_task_to_ui(self, task_id: str) -> None:
         task = self._registry.get(task_id)
+        self.include_time_checkbox.setEnabled(task_id != "bubble_sensor")
         default_params = task.default_parameters()
         self.parameter_form.set_schema(task.parameter_schema(), default_params)
         self._apply_edit_profile(task.edit_profile(default_params))
