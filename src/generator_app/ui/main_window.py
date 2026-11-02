@@ -80,6 +80,10 @@ class MainWindow(QMainWindow):
         self.include_time_checkbox.setToolTip(
             "Добавлять столбец времени или номера измерения, в зависимости от задания."
         )
+        self.save_graphs_checkbox = QCheckBox("Сохранить графики в PNG", left_panel)
+        self.save_graphs_checkbox.setToolTip(
+            "Сохранять основной график и, если он доступен для датчика, график обработанных данных."
+        )
         self.processed_button = QPushButton("Показать обработанные данные", left_panel)
         self.theme_button = QPushButton("", left_panel)
         self.exit_button = QPushButton("Выход", left_panel)
@@ -90,6 +94,7 @@ class MainWindow(QMainWindow):
         left_layout.addWidget(self.generate_button)
         left_layout.addWidget(self.save_button)
         left_layout.addWidget(self.include_time_checkbox)
+        left_layout.addWidget(self.save_graphs_checkbox)
         left_layout.addWidget(self.processed_button)
         left_layout.addWidget(self.theme_button)
         left_layout.addWidget(self.exit_button)
@@ -361,7 +366,21 @@ class MainWindow(QMainWindow):
             self._export_service.save_txt(
                 Path(target_dir), payload, include_time=self.include_time_checkbox.isChecked()
             )
-            QMessageBox.information(self, "Сохранено", "TXT файлы сохранены в выбранную папку.")
+            try:
+                self._save_graph_images(Path(target_dir), task_id, is_directory=True)
+            except Exception as error:
+                QMessageBox.warning(
+                    self,
+                    "Графики не сохранены",
+                    f"TXT-файлы сохранены, но PNG-графики сохранить не удалось:\n{error}",
+                )
+                return
+            message = (
+                "TXT-файлы и PNG-графики сохранены в выбранную папку."
+                if self.save_graphs_checkbox.isChecked()
+                else "TXT-файлы сохранены в выбранную папку."
+            )
+            QMessageBox.information(self, "Сохранено", message)
             return
 
         target_path, _ = QFileDialog.getSaveFileName(
@@ -376,7 +395,48 @@ class MainWindow(QMainWindow):
         self._export_service.save_txt(
             Path(target_path), payload, include_time=self.include_time_checkbox.isChecked()
         )
-        QMessageBox.information(self, "Сохранено", "Файл успешно сохранен.")
+        try:
+            self._save_graph_images(Path(target_path), task_id, is_directory=False)
+        except Exception as error:
+            QMessageBox.warning(
+                self,
+                "Графики не сохранены",
+                f"TXT-файл сохранён, но PNG-графики сохранить не удалось:\n{error}",
+            )
+            return
+        message = (
+            "TXT-файл и PNG-графики сохранены."
+            if self.save_graphs_checkbox.isChecked()
+            else "Файл успешно сохранен."
+        )
+        QMessageBox.information(self, "Сохранено", message)
+
+    def _save_graph_images(
+        self, target: Path, task_id: str, *, is_directory: bool
+    ) -> None:
+        if not self.save_graphs_checkbox.isChecked() or self._current_dataset is None:
+            return
+
+        if is_directory:
+            output_dir = target
+            filename_stem = task_id
+        else:
+            output_dir = target.parent
+            filename_stem = target.stem
+
+        self.plot_editor.save_png(str(output_dir / f"{filename_stem}_signal.png"))
+        params = self.parameter_form.collect_values()
+        processed_view = self._processing_service.build_processed_view(
+            task_id,
+            self._current_dataset,
+            params,
+        )
+        if processed_view is not None and processed_view.curves:
+            ProcessedDataDialog.save_png(
+                processed_view,
+                str(output_dir / f"{filename_stem}_processed.png"),
+                self._theme,
+            )
 
     def _show_processed_view(self) -> None:
         if self._current_dataset is None:

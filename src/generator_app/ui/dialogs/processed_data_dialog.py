@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pyqtgraph as pg
+from pyqtgraph.exporters import ImageExporter
 from PyQt6.QtWidgets import QDialog, QVBoxLayout
 
 from generator_app.core.models.dataset import ProcessedView
@@ -21,21 +22,42 @@ class ProcessedDataDialog(QDialog):
         self.setWindowTitle(processed_view.title)
         self.resize(900, 600)
 
-        plot = pg.PlotWidget(self)
-        self._apply_theme(plot, theme)
+        plot = self._build_plot(processed_view, theme, self)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(plot)
+
+    @classmethod
+    def save_png(cls, processed_view: ProcessedView, path: str, theme: str) -> None:
+        plot = cls._build_plot(processed_view, theme)
+        plot.resize(1600, 900)
+        plot.getPlotItem().autoRange()
+        exporter = ImageExporter(plot.getPlotItem())
+        exporter.parameters()["width"] = 1600
+        try:
+            if not exporter.export(path):
+                raise OSError(f"Не удалось записать PNG-файл: {path}")
+        finally:
+            plot.close()
+
+    @classmethod
+    def _build_plot(
+        cls, processed_view: ProcessedView, theme: str, parent=None
+    ) -> pg.PlotWidget:
+        plot = pg.PlotWidget(parent)
+        cls._apply_theme(plot, theme)
         plot.addLegend()
         for index, curve in enumerate(processed_view.curves):
-            color = curve.color or self._CURVE_COLORS[index % len(self._CURVE_COLORS)]
-            style = self._line_style(curve.line_style)
+            color = curve.color or cls._CURVE_COLORS[index % len(cls._CURVE_COLORS)]
+            style = cls._line_style(curve.line_style)
             plot.plot(
                 curve.x,
                 curve.y,
                 pen=pg.mkPen(color=color, width=3, style=style),
                 name=curve.name,
             )
-
-        layout = QVBoxLayout(self)
-        layout.addWidget(plot)
+        plot.getPlotItem().autoRange()
+        return plot
 
     @staticmethod
     def _apply_theme(plot: pg.PlotWidget, theme: str) -> None:

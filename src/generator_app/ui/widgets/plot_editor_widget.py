@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import pyqtgraph as pg
+from pyqtgraph.exporters import ImageExporter
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QMenu, QVBoxLayout, QWidget
 
@@ -348,3 +349,9 @@ class PlotEditorWidget(QWidget):
             )
 
         self._plot.getViewBox().autoRange()
+
+    def save_png(self, path: str) -> None:
+        exporter = ImageExporter(self._plot.getPlotItem())
+        exporter.parameters()["width"] = 1600
+        if not exporter.export(path):
+            raise OSError(f"Не удалось записать PNG-файл: {path}")
